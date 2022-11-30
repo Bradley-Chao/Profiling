@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 
         FILE *fp = fopen(argv[1], "rb");
         assert(fp != NULL);
-        /* :) */
+        
         universal_machine UM = read_program_file(fp);
         assert(UM != NULL);
 

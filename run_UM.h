@@ -12,9 +12,11 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
-#include "bitpack.h"
 #include "universal_machine.h"
 #include "instruction_set.h"
+
+//static inline uint64_t shl(uint64_t word, unsigned bits);
+//static inline uint64_t Bitpack_newu(uint64_t word, unsigned width, unsigned lsb, uint64_t value);
 
 universal_machine read_program_file(FILE *fp);
 void run_program(universal_machine UM);

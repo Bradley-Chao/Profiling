@@ -9,6 +9,61 @@
 #include "run_UM.h"
 #include <stdbool.h>
 
+Except_T Bitpack_Overflow = { "Overflow packing bits" };
+
+static inline uint64_t shl(uint64_t word, unsigned bits)
+{
+        assert(bits <= 64);
+        if (bits == 64)
+                return 0;
+        else
+                return word << bits;
+}
+
+static inline uint64_t shr(uint64_t word, unsigned bits)
+{
+        assert(bits <= 64);
+        if (bits == 64)
+                return 0;
+        else
+                return word >> bits;
+}
+
+static inline bool Bitpack_fitsu(uint64_t n, unsigned width)
+{
+        assert(width <= 64);
+        /* thanks to Jai Karve and John Bryan  */
+        /* clever shortcut instead of 2 shifts */
+        return shr(n, width) == 0; 
+}
+
+static inline uint64_t Bitpack_newu(uint64_t word, unsigned width, unsigned lsb,
+                      uint64_t value)
+{
+        assert(width <= 64);
+        unsigned hi = lsb + width; /* one beyond the most significant bit */
+        assert(hi <= 64);
+        if (!Bitpack_fitsu(value, width)) {
+                printf("Value : %lu\n", value);
+                printf("width : %u\n", width);
+
+                RAISE(Bitpack_Overflow);
+        }
+        return shl(shr(word, hi), hi)                 /* high part */
+                | shr(shl(word, 64 - lsb), 64 - lsb)  /* low part  */
+                | (value << lsb);                     /* new part  */
+}
+
+static inline uint64_t Bitpack_getu(uint64_t word, unsigned width, unsigned lsb)
+{
+        assert(width <= 64);
+        unsigned hi = lsb + width; /* one beyond the most significant bit */
+        assert(hi <= 64);
+        /* different type of right shift */
+        return shr(shl(word, 64 - hi),
+                   64 - width); 
+}
+
 /* Name: read_program_file
  * Purpose: Read bytes of file and translate them into a sequence of 32-bit
  * instructions and store them in the universal machine data structure
