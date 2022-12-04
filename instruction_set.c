@@ -21,13 +21,8 @@
 */
 void conditional_move(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 {
-        assert(UM != NULL);
-        assert(A < 8 && B < 8 && C < 8);
-
-        if (get_register(UM, C) != 0) {
-                uint32_t B_value = get_register(UM, B);
-                set_register(UM, A, B_value);
-        }
+        if (UM->registers[C] != 0)
+                UM->registers[A] = UM->registers[B];
 }
 
 /* Name: segmented_load
@@ -38,11 +33,10 @@ void conditional_move(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 */
 void segmented_load(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 {
-        uint32_t segment_ID = get_register(UM, B);
-        uint32_t offset = get_register(UM, C);
+        uint32_t segment_ID = UM->registers[B];
+        uint32_t offset = UM->registers[C];
 
-        UM_instruction word = get_instruction(UM, segment_ID, offset);
-        set_register(UM, A, word);
+        UM->registers[A] = UM->segments[segment_ID][offset + 1];
 }
 
 /* Name: segmented_store
@@ -54,11 +48,10 @@ void segmented_load(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 */
 void segmented_store(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 {
-        uint32_t C_value = get_register(UM, C);
-        uint32_t segment_ID = get_register(UM, A);
-        uint32_t offset = get_register(UM, B);
+        uint32_t segment_ID = UM->registers[A];
+        uint32_t offset = UM->registers[B];
 
-        set_instruction(UM, segment_ID, offset, C_value);
+        UM->segments[segment_ID][offset + 1] = UM->registers[C];
 }
 /* Name: addition
 *  Purpose: Add registers to update one
@@ -68,12 +61,7 @@ void segmented_store(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 */
 void addition(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 {
-        uint32_t B_value = get_register(UM, B);
-        uint32_t C_value = get_register(UM, C);
-
-        uint32_t sum = (B_value + C_value) % mod_limit;
-
-        set_register(UM, A, sum);
+        UM->registers[A] = (UM->registers[B] + UM->registers[C]) % mod_limit;
 }
 
 /* Name: multiplication
@@ -84,12 +72,7 @@ void addition(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 */
 void multiplication(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 {
-        uint32_t B_value = get_register(UM, B);
-        uint32_t C_value = get_register(UM, C);
-
-        uint32_t product = (B_value * C_value) % mod_limit;
-
-        set_register(UM, A, product);
+        UM->registers[A] = (UM->registers[B] * UM->registers[C]) % mod_limit;
 }
 
 /* Name: division
@@ -100,15 +83,7 @@ void multiplication(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 */
 void division(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 {
-        uint32_t B_value = get_register(UM, B);
-        uint32_t C_value = get_register(UM, C);
-
-        /* (6) Can't divide by zero */
-        assert(C_value != 0);
-
-        uint32_t quotient = B_value / C_value;
-
-        set_register(UM, A, quotient);
+        UM->registers[A] = (UM->registers[B] / UM->registers[C]) % mod_limit;
 }
 
 /* Name: bitwise_nand
@@ -119,12 +94,7 @@ void division(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 */
 void bitwise_nand(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 {
-        uint32_t B_value = get_register(UM, B);
-        uint32_t C_value = get_register(UM, C);
-        
-        uint32_t NAND_result = ~(B_value & C_value);
-        
-        set_register(UM, A, NAND_result);
+        UM->registers[A] = ~(UM->registers[B] & UM->registers[C]);
 }
 
 /* Name: map_segment
@@ -135,9 +105,7 @@ void bitwise_nand(universal_machine UM, UM_Reg A, UM_Reg B, UM_Reg C)
 */
 void map(universal_machine UM, UM_Reg B, UM_Reg C)
 {
-        uint32_t num_words = get_register(UM, C);
-        uint32_t index = map_segment(UM, num_words);
-        set_register(UM, B, index);
+        UM->registers[B] = map_segment(UM, UM->registers[C]);
 }
 
 /* Name: unmap_segment
@@ -148,9 +116,7 @@ void map(universal_machine UM, UM_Reg B, UM_Reg C)
 */
 void unmap(universal_machine UM, UM_Reg C)
 {
-        uint32_t index_to_unmap = get_register(UM, C);
-
-        unmap_segment(UM, index_to_unmap);
+        unmap_segment(UM, UM->registers[C]);
 }
 
 /* Name: unmap_segment
@@ -162,12 +128,7 @@ void unmap(universal_machine UM, UM_Reg C)
 */
 void output(universal_machine UM, UM_Reg C)
 {
-        uint32_t int_value = get_register(UM, C);
-
-        /* (8) Can't output value > 255 */
-        assert(int_value <= 255);
-
-        putchar(int_value);
+        putchar(UM->registers[C]);
 }
 
 /* Name: input
@@ -182,15 +143,10 @@ void input(universal_machine UM, UM_Reg C)
 {
         int int_value = getchar();
 
-        if (int_value == EOF) {
-                uint32_t all_ones = ~0;
-                set_register(UM, C, all_ones);
-        }
-        else {
-                assert(int_value >= 0 && int_value <= 255);
-
-                set_register(UM, C, int_value);
-        }
+        if (int_value == EOF)
+                UM->registers[C] = ~0;
+        else 
+                UM->registers[C] = int_value;
 }
 
 /* Name: load_program
@@ -202,31 +158,24 @@ void input(universal_machine UM, UM_Reg C)
 */
 void load_program(universal_machine UM, UM_Reg B)
 {
-        uint32_t B_value = get_register(UM, B);
+        uint32_t reg_B_value = UM->registers[B];
 
         /* Not allowed to load segment zero into segment zero */
-        if (B_value != 0) {
-                /* Checked runtime error if segment B_value DNE */
-                segment target = (segment) Seq_get(UM->segments, B_value);
-                assert(target != NULL);
-                
-                /* Perform deep copy of the $m[$r[B]] word instructions */
-                Seq_T duplicates = Seq_new(Seq_length(target->instructions));
-                assert(duplicates != NULL);
+        if (reg_B_value != 0) {
+                uint32_t *target_segment = UM->segments[reg_B_value];
 
-                for (int i = 0; i < Seq_length(target->instructions); i++) {
-                        uint32_t word = get_instruction(UM, B_value, i);
+                uint32_t num_instructions = target_segment[0];
 
-                        Seq_addhi(duplicates, (void *) (uintptr_t) word);
-                }
+                uint32_t *deep_copy = malloc((num_instructions + 1) * sizeof(uint32_t));
+                assert(deep_copy);
 
-                /* Free instructions in segment zero and replace with new 
-                   instructions */
-                segment segment_zero = (segment) Seq_get(UM->segments, 0);
+                uint32_t true_size = num_instructions + 1;
+                for (size_t i = 0; i < true_size; i++)
+                        deep_copy[i] = target_segment[i];
 
-                Seq_free(&(segment_zero->instructions));
+                free(UM->segments[0]);
 
-                segment_zero->instructions = duplicates;
+                UM->segments[0] = deep_copy;
         }       
 }
 
@@ -238,5 +187,5 @@ void load_program(universal_machine UM, UM_Reg B)
 */
 void load_value(universal_machine UM, UM_Reg A, uint32_t value)
 {
-        set_register(UM, A, value);
+        UM->registers[A] = value;
 }
